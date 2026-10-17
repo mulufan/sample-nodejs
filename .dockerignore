@@ -1,0 +1,26 @@
+# Dependencies are installed inside the image
+node_modules
+npm-debug.log*
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Local tooling and editor files
+CLAUDE.md
+CLAUDE.local.md
+.claude
+.vscode
+.idea
+
+# Secrets and environment files
+.env
+.env.*
+
+# Documentation
+README.md

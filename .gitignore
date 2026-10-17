@@ -1,1 +1,5 @@
 node_modules/
+# Local Claude Code instructions
+CLAUDE.md
+CLAUDE.local.md
+.claude/settings.local.json
