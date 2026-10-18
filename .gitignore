@@ -3,3 +3,6 @@ node_modules/
 CLAUDE.md
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Local image archives
+*.tar

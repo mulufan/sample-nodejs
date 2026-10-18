@@ -1,0 +1,67 @@
+# Number of pod replicas
+replicaCount: 2
+
+image:
+  # Private registry repository
+  repository: ghcr.io/mulufan/sample-nodejs
+  # Defaults to the chart appVersion when empty
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Secrets used to pull from the private registry
+imagePullSecrets: []
+#  - name: ghcr-pull-secret
+
+# Port the app listens on (matches PORT in app.js and EXPOSE in the Dockerfile)
+containerPort: 8080
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Health probes (endpoints served by app.js on the named "http" port)
+readinessProbe:
+  path: /ready
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+livenessProbe:
+  path: /live
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+# Container resource requests and limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Pod-level security context (UID/GID 1000 is the "node" user in the base image)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+# Container-level security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Ingress (disabled until an ingress controller is installed in the cluster)
+ingress:
+  enabled: false
+  # IngressClass of the controller, e.g. "nginx"; empty uses the cluster default
+  className: ""
+  annotations: {}
+  host: sample-nodejs.local
+  path: /
+  pathType: Prefix
