@@ -24,3 +24,7 @@ CLAUDE.local.md
 
 # Documentation
 README.md
+
+# Local image archives and Kubernetes manifests
+*.tar
+helm/
