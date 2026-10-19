@@ -6,3 +6,9 @@ CLAUDE.local.md
 
 # Local image archives
 *.tar
+
+# Python bytecode from helper scripts
+__pycache__/
+*.pyc
+
+*.log
