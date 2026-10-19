@@ -56,10 +56,10 @@ securityContext:
     drop:
       - ALL
 
-# Ingress (disabled until an ingress controller is installed in the cluster)
+# Ingress (disabled by default; enabled per environment, e.g. values-local.yaml)
 ingress:
   enabled: false
-  # IngressClass of the controller, e.g. "nginx"; empty uses the cluster default
+  # IngressClass of the controller, e.g. "traefik"; empty uses the cluster default
   className: ""
   annotations: {}
   host: sample-nodejs.local
