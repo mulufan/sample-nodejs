@@ -1,0 +1,50 @@
+# Custom Semgrep rules that define what CRITICAL means for the CI SAST gate.
+#
+# Registry rulesets (p/python, p/javascript, ...) never use CRITICAL severity,
+# so these rules are the only source of CRITICAL findings and the gate in
+# .github/workflows/ci.yaml fails only on them.
+#
+# Limited coverage: the gate blocks ONLY the two Python patterns below
+# (subprocess command injection and SQL built from formatted strings).
+# Every other registry finding, including JavaScript, is reported but does not
+# fail CI. Add a rule here to make a new vulnerability class blocking.
+rules:
+  - id: python-subprocess-command-injection
+    languages: [python]
+    severity: CRITICAL
+    message: >-
+      Non-constant command run by subprocess through a shell. If any part of
+      it is user controlled this is OS command injection. Pass an argument
+      list with shell=False instead.
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+    patterns:
+      - pattern: subprocess.$FUNC($CMD, ..., shell=True, ...)
+      - pattern-not: subprocess.$FUNC("...", ..., shell=True, ...)
+
+  - id: python-sql-injection
+    languages: [python]
+    severity: CRITICAL
+    message: >-
+      SQL query built with string formatting or concatenation. This is SQL
+      injection. Use placeholders and pass values separately, e.g.
+      cursor.execute("SELECT * FROM t WHERE id = ?", (value,)).
+    metadata:
+      cwe: "CWE-89: SQL Injection"
+    # Taint follows the formatted string through variables to the query call
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: '"..." % $X'
+          - pattern: '"...".format(...)'
+          - pattern: f"..."
+          - patterns:
+              - pattern: '"..." + $X'
+              - pattern-not: '"..." + "..."'
+    pattern-sinks:
+      - patterns:
+          - pattern: $DB.$METHOD($QUERY, ...)
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: ^(execute|executemany|executescript)$
+          - focus-metavariable: $QUERY
