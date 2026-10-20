@@ -1,0 +1,10 @@
+# Prometheus datasource, reached over the Compose network by service name.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
