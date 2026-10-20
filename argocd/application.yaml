@@ -19,6 +19,11 @@ spec:
     server: https://kubernetes.default.svc
     # Pre-created namespace that holds ghcr-pull-secret
     namespace: sample-nodejs
-  # Manual sync for the initial deployment; automated sync is enabled
-  # after the first deployment is validated
-  syncPolicy: {}
+  # Deploys every change automatically: new commits on main and image tags
+  # set by Argo CD Image Updater (argocd/image-updater.yaml)
+  syncPolicy:
+    automated:
+      # Keep resources removed from the chart until deleted manually
+      prune: false
+      # Revert manual changes made in the cluster
+      selfHeal: true
