@@ -1,0 +1,30 @@
+# Argo CD Image Updater: deploys each new release published to GHCR.
+# CI only publishes images that passed SAST, Trivy and the smoke test.
+# kubectl apply -f argocd/image-updater.yaml
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: sample-nodejs
+  namespace: argocd
+spec:
+  # Set the new tag as a Helm parameter on the Application in the cluster;
+  # nothing is committed to Git, so main stays protected
+  writeBackConfig:
+    method: argocd
+  applicationRefs:
+    - namePattern: sample-nodejs
+      images:
+        - alias: app
+          imageName: ghcr.io/mulufan/sample-nodejs
+          commonUpdateSettings:
+            # Highest X.Y.Z release; sha-<commit> tags are ignored
+            updateStrategy: semver
+            allowTags: "regexp:^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            # Docker pull secret created manually in the argocd namespace;
+            # must be in the same namespace as this resource
+            pullSecret: pullsecret:argocd/ghcr-pull-secret
+          # Helm parameters used by the chart for the image
+          manifestTargets:
+            helm:
+              name: image.repository
+              tag: image.tag
