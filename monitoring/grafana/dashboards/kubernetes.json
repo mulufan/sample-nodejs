@@ -1,0 +1,157 @@
+{
+  "uid": "k8s-monitor",
+  "title": "Kubernetes Monitor",
+  "tags": ["kubernetes"],
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": { "from": "now-30m", "to": "now" },
+  "schemaVersion": 39,
+  "editable": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Nodes Ready",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "k8s_nodes_ready", "legendFormat": "Ready" }],
+      "options": { "reduceOptions": { "calcs": ["last"] }, "colorMode": "value", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Running Pods",
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "k8s_pods_running", "legendFormat": "Running" }],
+      "options": { "reduceOptions": { "calcs": ["last"] }, "colorMode": "value", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Monitor Health",
+      "description": "OK when Prometheus scrapes the monitor and its latest Kubernetes API collection succeeded.",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min(up{job=\"k8s-monitor\"}) * (min(k8s_monitor_success) or vector(0))",
+          "legendFormat": "Health"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["last"] }, "colorMode": "value", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "NO DATA",
+          "mappings": [{ "type": "value", "options": { "0": { "text": "FAILED", "color": "red" }, "1": { "text": "OK", "color": "green" } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Pods",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "k8s_pods_total", "legendFormat": "Total" },
+        { "refId": "B", "expr": "k8s_pods_running", "legendFormat": "Running" },
+        { "refId": "C", "expr": "k8s_pods_failed", "legendFormat": "Failed" }
+      ],
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "decimals": 0,
+          "custom": { "axisLabel": "pods", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Total" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }] },
+          { "matcher": { "id": "byName", "options": "Running" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byName", "options": "Failed" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Nodes",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "k8s_nodes_ready", "legendFormat": "Ready" },
+        { "refId": "B", "expr": "k8s_nodes_not_ready", "legendFormat": "Not ready" }
+      ],
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "decimals": 0,
+          "custom": { "axisLabel": "nodes", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Ready" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byName", "options": "Not ready" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Container Restarts",
+      "description": "Container restarts summed over all current pods; drops when pods are deleted.",
+      "gridPos": { "x": 0, "y": 13, "w": 12, "h": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "k8s_pod_restarts", "legendFormat": "Restarts" }],
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "single" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": { "axisLabel": "restarts", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Unavailable Deployments",
+      "description": "Deployments with fewer available replicas than desired.",
+      "gridPos": { "x": 12, "y": 13, "w": 12, "h": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "k8s_deployments_unavailable", "legendFormat": "Unavailable" }],
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "single" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": { "axisLabel": "deployments", "axisSoftMax": 5, "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false }
+        }
+      }
+    }
+  ]
+}

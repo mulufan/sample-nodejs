@@ -1,0 +1,59 @@
+# Local Prometheus + Grafana for the host-side monitor (monitoring/k8s_monitor.py).
+# Separate from any other Compose project: own project name, containers and volumes.
+#
+#   monitoring/.venv/Scripts/python monitoring/k8s_monitor.py   # on the host, port 8002
+#   docker compose -f monitoring/docker-compose.yml up -d
+#   docker compose -f monitoring/docker-compose.yml down        # keeps the volumes
+#
+# Prometheus: localhost:9090   Grafana: localhost:3000
+# Host ports bind to 127.0.0.1 only. Grafana is a read-only local demo:
+# anonymous Viewer access with no login, so datasources and dashboards come
+# from provisioning files rather than the UI.
+name: k8s-monitor
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: k8s-monitor-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Small local cluster: a week of data, capped on disk
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.size=500MB
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    mem_limit: 512m
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: k8s-monitor-grafana
+    environment:
+      # Local demo: open straight to dashboards, view-only
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Also blocks API logins, e.g. the default admin/admin on a fresh volume
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      # Open the Kubernetes dashboard instead of the Grafana welcome page
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/kubernetes.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    mem_limit: 384m
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-data:
+    name: k8s-monitor-prometheus-data
+  grafana-data:
+    name: k8s-monitor-grafana-data

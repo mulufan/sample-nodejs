@@ -1,0 +1,10 @@
+# Scrapes the Python monitor (monitoring/k8s_monitor.py), which runs on the
+# Windows host. Docker Desktop resolves host.docker.internal to the host.
+global:
+  # Matches the monitor's collection interval
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: k8s-monitor
+    static_configs:
+      - targets: ["host.docker.internal:8002"]

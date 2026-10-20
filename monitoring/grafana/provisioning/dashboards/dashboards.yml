@@ -1,0 +1,9 @@
+# Loads the dashboard JSON files mounted at /etc/grafana/dashboards.
+apiVersion: 1
+providers:
+  - name: k8s-monitor
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards

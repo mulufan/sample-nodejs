@@ -11,5 +11,14 @@ CLAUDE.local.md
 __pycache__/
 *.pyc
 
+# Python virtual environments
+.venv/
+venv/
+
+# Local environment files may hold credentials; only the template is tracked
+.env
+.env.*
+!.env.example
+
 *.log
 sast-test/
