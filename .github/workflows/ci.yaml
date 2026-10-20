@@ -18,6 +18,8 @@ concurrency:
 env:
   NODE_VERSION: "22"
   IMAGE_NAME: sample-nodejs
+  # Private GHCR repository the scanned image is published to
+  REGISTRY_IMAGE: ghcr.io/mulufan/sample-nodejs
   CHART_PATH: helm/sample-nodejs
 
 jobs:
@@ -126,7 +128,9 @@ jobs:
   docker-build:
     name: Build Docker image
     runs-on: ubuntu-latest
-    needs: [version, validate, sast]
+    needs: [version, validate, helm-lint, sast]
+    outputs:
+      image-id: ${{ steps.save.outputs.image-id }}
     env:
       VERSION: ${{ needs.version.outputs.version }}
       TRIVY_IMAGE: aquasec/trivy:0.65.0
@@ -135,7 +139,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      # Build only; pushing to the registry is added in a later stage
+      # Build and load locally; the publish job pushes this exact image
       - name: Build image
         uses: docker/build-push-action@v6
         with:
@@ -151,7 +155,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       # Scans the image loaded above via the Docker socket (no rebuild).
-      # Any HIGH/CRITICAL finding fails the job, which blocks release-tag.
+      # Any HIGH/CRITICAL finding fails the job, which blocks publish and release-tag.
       - name: Scan image (Trivy)
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
@@ -171,12 +175,64 @@ jobs:
         if: failure()
         run: docker logs app
 
+      # Hand the exact scanned image to the publish job (only in main branch, no rebuild).
+      # The image ID is recorded so publish can verify what it loads.
+      - name: Save image
+        id: save
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          image_id=$(docker image inspect --format '{{.Id}}' "$IMAGE_NAME:$VERSION")
+          docker save "$IMAGE_NAME:$VERSION" -o image.tar
+          echo "image-id=$image_id" >> "$GITHUB_OUTPUT"
+
+      - name: Upload image artifact
+        if: steps.save.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: image
+          path: image.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    name: Publish image (GHCR)
+    runs-on: ubuntu-latest
+    # Publishes only from main, after every jobs has passed
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [version, validate, helm-lint, sast, docker-build]
+    permissions:
+      contents: read # checkout for scripts/
+      packages: write # push to GHCR with GITHUB_TOKEN
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      IMAGE_ID: ${{ needs.docker-build.outputs.image-id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: image
+
+      - name: Load image
+        run: docker load -i image.tar
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Verifies the image ID, then pushes <version> and sha-<short sha>.
+      # An existing version tag is never overwritten (see the script).
+      - name: Verify and push image
+        run: python3 scripts/ghcr_publish.py "$IMAGE_NAME:$VERSION" "$REGISTRY_IMAGE" "$VERSION" "$IMAGE_ID"
+
   release-tag:
     name: Tag release
     runs-on: ubuntu-latest
     # Releases are cut only from main, after every check has passed
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [version, validate, helm-lint, docker-build, sast]
+    needs: [version, validate, helm-lint, docker-build, sast, publish]
     permissions:
       contents: write
     env:
