@@ -255,3 +255,48 @@ jobs:
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
           echo "Released \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+
+  gitops-update:
+    name: Update GitOps image tag
+    runs-on: ubuntu-latest
+    # Deploys only a published and tagged release from main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [version, publish, release-tag]
+    permissions:
+      contents: write
+    # One tag update at a time; queued runs wait instead of racing the push
+    concurrency:
+      group: gitops-update
+      cancel-in-progress: false
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      VALUES_FILE: helm/sample-nodejs/values-gitops.yaml
+    steps:
+      # Latest main, not the triggering commit, so the push is a fast-forward
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # Argo CD picks up the commit. GITHUB_TOKEN pushes
+      - name: Commit image tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            # Re-apply on top of the newest main if a push was rejected
+            git fetch origin main
+            git reset --hard origin/main
+            python3 scripts/gitops_update.py "$VALUES_FILE" "$VERSION"
+            if git diff --quiet -- "$VALUES_FILE"; then
+              echo "image.tag already up to date"
+              exit 0
+            fi
+            git commit -m "chore(gitops): deploy $VERSION [skip ci]" -- "$VALUES_FILE"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), retrying"
+            sleep 5
+          done
+          echo "::error::Could not push the image tag update"
+          exit 1
