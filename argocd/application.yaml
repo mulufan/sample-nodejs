@@ -1,0 +1,24 @@
+# Argo CD Application: deploys the Helm chart from this repository (GitOps).
+# kubectl apply -f argocd/application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-nodejs
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mulufan/sample-nodejs.git
+    targetRevision: main
+    path: helm/sample-nodejs
+    helm:
+      releaseName: sample-nodejs
+      valueFiles:
+        - values-gitops.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    # Pre-created namespace that holds ghcr-pull-secret
+    namespace: sample-nodejs
+  # Manual sync for the initial deployment; automated sync is enabled
+  # after the first deployment is validated
+  syncPolicy: {}

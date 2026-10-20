@@ -79,11 +79,13 @@ jobs:
         run: |
           helm lint "$CHART_PATH"
           helm lint "$CHART_PATH" -f "$CHART_PATH/values-local.yaml"
+          helm lint "$CHART_PATH" -f "$CHART_PATH/values-gitops.yaml"
 
       - name: Render templates
         run: |
           helm template ci "$CHART_PATH" > /dev/null
           helm template ci "$CHART_PATH" -f "$CHART_PATH/values-local.yaml" > /dev/null
+          helm template ci "$CHART_PATH" -f "$CHART_PATH/values-gitops.yaml" > /dev/null
 
   sast:
     name: SAST (Semgrep)
